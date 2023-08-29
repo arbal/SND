@@ -8,10 +8,10 @@ before:
 env:
   - "GO111MODULE=on"
   - "CGO_ENABLED=0"
-#  - "GOFLAGS=-workfile=off" # Golang 1.18+
 
 gomod:
   proxy: true
+  mod: mod
   env:
     - "GOPROXY=https://proxy.golang.org,direct"
     - "GOSUMDB=sum.golang.org"
@@ -20,8 +20,7 @@ gomod:
 builds:
   - id: "snd"
     main: "./cmd/snd"
-    binary: "{{ .ProjectName }}_{{ .Target }}/snd"
-    no_unique_dist_dir: true
+    binary: "snd"
     mod_timestamp: "{{ .CommitTimestamp }}"
     goos:
       - "linux"
@@ -63,16 +62,15 @@ snapshot:
 archives:
   - id: "release"
     format: "tar.xz"
-    wrap_in_directory: "true"
+    wrap_in_directory: true
+    rlcp: true
     format_overrides:
       - goos: "windows"
         format: "zip"
-    replacements:
-      darwin: "macOS"
-      linux: "Linux"
-      windows: "Windows"
-      386: "i686"
-      amd64: "x86_64"
+    name_template: '{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
+    files:
+      - src: "contrib/config/config.toml"
+        dst: "config.toml"
 
 nfpms:
   - id: "snd"
@@ -87,6 +85,12 @@ nfpms:
       - "apk"
       - "deb"
       - "rpm"
+      - "termux.deb"
+      - "archlinux"
+    contents:
+      - src: "contrib/config/config.toml"
+        dst: "/etc/snd/config.toml"
+        type: "config|noreplace"
 
 checksum:
   name_template: "checksums.txt"

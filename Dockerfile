@@ -1,5 +1,5 @@
 # build stage
-FROM golang:1.18-buster as builder
+FROM golang:1.20-bullseye as builder
 
 ARG GOPATH=/tmp/go
 RUN apt-get update -y \
@@ -8,17 +8,17 @@ RUN apt-get update -y \
 
 WORKDIR /root/snd
 COPY . /root/snd/
-RUN goreleaser build --single-target --id "snd" --output "dist/snd" --snapshot --rm-dist
+RUN goreleaser build --config contrib/goreleaser/goreleaser.yaml --single-target --id "snd" --output "dist/snd" --snapshot --clean
 
 # production stage
-FROM debian:buster-slim
-LABEL maintainer="docker@public.swineson.me"
+FROM debian:bullseye-slim
+LABEL org.opencontainers.image.authors="docker@public.swineson.me"
 
 # Import the user and group files from the builder.
 COPY --from=builder /etc/passwd /etc/group /etc/
 
 COPY --from=builder /root/snd/dist/snd /usr/local/bin/
-COPY --from=builder /root/snd/examples/config.toml /etc/snd/
+COPY --from=builder /root/snd/contrib/config/config.toml /etc/snd/
 
 # nope
 # See: https://github.com/moby/moby/issues/8460

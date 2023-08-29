@@ -37,9 +37,11 @@ Other OSes are not currently tested because of the lack of resources available t
 
 ### Configure SND
 
-Copy over the self-documented [example config](examples/config.toml) and tweak it for your own need. Please do not leave any `example.com` things in your own config. Remove what you don't need. 
+Copy over the self-documented [example config](contrib/config/config.toml) and tweak it for your own need. Please do not
+leave any `example.com` things in your own config. Remove what you don't need.
 
-Currently no strict config file format checking is implemented -- you might crash the program if some important keys are missing. 
+Currently no strict config file format checking is implemented -- you might crash the program if some important keys are
+missing.
 
 ### Set up SND
 
@@ -117,7 +119,8 @@ Notes:
 
 ## Compilation
 
-Golang 1.13.5 or later is officially supported. Before starting, make sure the `GOROOT` and `GOPATH` environment variables are set correctly and there is a `go` binary is in your `PATH`.
+Golang 1.20.2 or later is officially supported. Before starting, make sure the `GOROOT` and `GOPATH` environment
+variables are set correctly and there is a `go` binary is in your `PATH`.
 
 ```shell
 git clone https://github.com/Jamesits/SND.git
