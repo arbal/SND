@@ -4,6 +4,7 @@ import (
 	"github.com/jamesits/libiferr/exception"
 	"log"
 	"net"
+	"slices"
 	"strings"
 )
 
@@ -70,7 +71,7 @@ func (config *Config) SOARecordFillDefault(r *SOARecord, useDefaultRecord bool) 
 	r.MName = ensureDotAtRight(r.MName)
 }
 
-// fix Config and fill in defaults
+// FixConfig fixes Config and fill in defaults
 func (config *Config) FixConfig() {
 	var err error
 
@@ -87,7 +88,7 @@ func (config *Config) FixConfig() {
 	}
 	config.SOARecordFillDefault(config.DefaultSOARecord, false)
 
-	fixed_hosts := make([]*perNetConfig, 0)
+	fixedHosts := make([]*PerNetConfig, 0)
 	for network, domain := range config.PerHostConfigs {
 		netCIDR := ""
 		for i := 0; i < len(network); i++ {
@@ -106,15 +107,15 @@ func (config *Config) FixConfig() {
 		log.Printf("Loading host %s -> %s\n", netCIDR, domain)
 		mode := "fixed"
 		for _, d := range strings.Split(domain, ",") {
-			thisHost := &perNetConfig{
+			thisHost := &PerNetConfig{
 				IPNetString:             &netCIDR,
 				PtrGenerationModeString: &mode,
 				Domain:                  &d,
 			}
-			fixed_hosts = append(fixed_hosts, thisHost)
+			fixedHosts = append(fixedHosts, thisHost)
 		}
 	}
-	config.PerNetConfigs = append(fixed_hosts, config.PerNetConfigs...)
+	config.PerNetConfigs = append(fixedHosts, config.PerNetConfigs...)
 
 	// note that range is byVal so we use index here
 	for _, currentConfig := range config.PerNetConfigs {
@@ -130,28 +131,32 @@ func (config *Config) FixConfig() {
 		}
 		switch strings.ToLower(*currentConfig.PtrGenerationModeString) {
 		case "fixed":
-			currentConfig.PtrGenerationMode = FIXED
+			currentConfig.PtrGenerationMode = Fixed
 		case "prefix_ltr":
-			currentConfig.PtrGenerationMode = PREPEND_LEFT_TO_RIGHT
+			currentConfig.PtrGenerationMode = PrependLeftToRight
 		case "prefix_rtl":
-			currentConfig.PtrGenerationMode = PREPEND_RIGHT_TO_LEFT
+			currentConfig.PtrGenerationMode = PrependRightToLeft
 		case "prefix_ltr_dash":
-			currentConfig.PtrGenerationMode = PREPEND_LEFT_TO_RIGHT_DASH
+			currentConfig.PtrGenerationMode = PrependLeftToRightDash
 		case "prefix_rtl_dash":
-			currentConfig.PtrGenerationMode = PREPEND_RIGHT_TO_LEFT_DASH
+			currentConfig.PtrGenerationMode = PrependRightToLeftDash
+		case "prefix_ltr_onlyip":
+			currentConfig.PtrGenerationMode = PrependLeftToRightOnlyip
+		case "prefix_rtl_onlyip":
+			currentConfig.PtrGenerationMode = PrependRightToLeftOnlyip
 		default:
 			log.Fatalf("Unknown mode \"%s\"", *currentConfig.PtrGenerationModeString)
 		}
 
 		// fill IPv6Notation
 		if currentConfig.IPv6NotationString == nil {
-			currentConfig.IPv6NotationMode = ARPA_NOTATION
+			currentConfig.IPv6NotationMode = ArpaNotation
 		} else {
 			switch strings.ToLower(*currentConfig.IPv6NotationString) {
 			case "arpa":
-				currentConfig.IPv6NotationMode = ARPA_NOTATION
+				currentConfig.IPv6NotationMode = ArpaNotation
 			case "four_hexs":
-				currentConfig.IPv6NotationMode = FOUR_HEXS_NOTATION
+				currentConfig.IPv6NotationMode = FourHexsNotation
 			default:
 				log.Fatalf("Unknown ipv6_notation \"%s\"", *currentConfig.PtrGenerationModeString)
 			}
@@ -172,5 +177,29 @@ func (config *Config) FixConfig() {
 		} else {
 			config.SOARecordFillDefault(currentConfig.SOARecord, true)
 		}
+
+		// Add configuration to dedicated list
+		if strings.Contains(*currentConfig.IPNetString, ":") {
+			config.PerIPv6NetConfigs = append(config.PerIPv6NetConfigs, currentConfig)
+		} else {
+			config.PerIPv4NetConfigs = append(config.PerIPv4NetConfigs, currentConfig)
+		}
 	}
+
+	slices.SortFunc(config.PerNetConfigs, subnetSortingFunc)
+	slices.SortFunc(config.PerIPv4NetConfigs, subnetSortingFunc)
+	slices.SortFunc(config.PerIPv6NetConfigs, subnetSortingFunc)
+}
+
+func subnetSortingFunc(a, b *PerNetConfig) int {
+	var aOnes, _ = a.IPNet.Mask.Size()
+	var bOnes, _ = b.IPNet.Mask.Size()
+
+	if aOnes > bOnes {
+		return -1
+	}
+	if aOnes < bOnes {
+		return 1
+	}
+	return 0
 }

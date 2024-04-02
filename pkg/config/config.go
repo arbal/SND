@@ -5,24 +5,29 @@ import "net"
 type PtrGenerationMode int
 
 const (
-	FIXED PtrGenerationMode = iota
-	PREPEND_LEFT_TO_RIGHT
-	PREPEND_RIGHT_TO_LEFT
-	PREPEND_LEFT_TO_RIGHT_DASH
-	PREPEND_RIGHT_TO_LEFT_DASH
+	Fixed PtrGenerationMode = iota
+	PrependLeftToRight
+	PrependRightToLeft
+	PrependLeftToRightDash
+	PrependRightToLeftDash
+	PrependRightToLeftOnlyip
+	PrependLeftToRightOnlyip
 )
 
 type IPv6NotationMode int
 
 const (
-	ARPA_NOTATION IPv6NotationMode = iota
-	FOUR_HEXS_NOTATION
+	ArpaNotation IPv6NotationMode = iota
+	FourHexsNotation
 )
 
 // Config file
 type Config struct {
+	Debug                 bool              `toml:"debug"`
 	Listen                []*string         `toml:"listen"`
-	PerNetConfigs         []*perNetConfig   `toml:"net"`
+	PerNetConfigs         []*PerNetConfig   `toml:"net"`
+	PerIPv4NetConfigs     []*PerNetConfig   `toml:""`
+	PerIPv6NetConfigs     []*PerNetConfig   `toml:""`
 	PerHostConfigs        map[string]string `toml:"host"`
 	DefaultNSes           []*string         `toml:"ns"`
 	OverrideVersionString string            `toml:"version_string"`
@@ -42,7 +47,7 @@ type SOARecord struct {
 	TTL     uint32  `toml:"TTL"`
 }
 
-type perNetConfig struct {
+type PerNetConfig struct {
 	IPNetString             *string           `toml:"net"`
 	IPNet                   *net.IPNet        `toml:""`
 	PtrGenerationModeString *string           `toml:"mode"`
